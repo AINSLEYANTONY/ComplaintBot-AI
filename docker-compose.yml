@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/complaint_system
+      - REDIS_URL=redis://redis:6379/0
+      - EMAIL_USER=your-email@gmail.com
+      - EMAIL_PASSWORD=your-app-password
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=complaint_system
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: .
+    command: celery -A app.celery worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/complaint_system
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+
+  celery-beat:
+    build: .
+    command: celery -A app.celery beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/complaint_system
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+
+volumes:
+  postgres_data:
